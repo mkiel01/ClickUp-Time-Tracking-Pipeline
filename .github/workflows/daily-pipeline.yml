@@ -27,18 +27,15 @@ jobs:
 
       - name: 1 — ClickUp → Postgres
         run: |
-          source .venv/bin/activate
           set -a && source .env && set +a
-          python tracked_time_update.py --days-back "${SYNC_DAYS_BACK:-2}"
+          arch -arm64 .venv/bin/python tracked_time_update.py --days-back "${SYNC_DAYS_BACK:-2}"
 
       - name: 2 — Build Excel
         run: |
-          source .venv/bin/activate
           set -a && source .env && set +a
-          python main.py export -o habbit_tracker.xlsx
+          arch -arm64 .venv/bin/python main.py export -o habbit_tracker.xlsx
 
       - name: 3 — Update Google Sheet
         run: |
-          source .venv/bin/activate
           set -a && source .env && set +a
-          python drive_upload.py habbit_tracker.xlsx
+          arch -arm64 .venv/bin/python drive_upload.py habbit_tracker.xlsx
