@@ -19,7 +19,7 @@ This project:
 
 ---
 
-## What’s in the repo
+## What’s in the repos
 
 - `database.py` — fetch tasks from ClickUp, upsert into Postgres (durations from task dates such as start/due, not ClickUp’s paid Time Tracking API).
 - `folder_config.py` — folder name map, planned hours, productivity/enjoyment tags (single place to customize).
