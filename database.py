@@ -1,4 +1,5 @@
 import requests
+import socket
 import time
 import psycopg2
 from psycopg2 import sql as psql
@@ -27,9 +28,31 @@ PG_CONFIG = {
     "port": int(os.getenv("POSTGRES_PORT", "5432")),
 }
 
+
+def postgres_host() -> str:
+    """
+    POSTGRES_HOST from .env. If set to host.docker.internal but that name only
+    exists inside Docker, fall back to 127.0.0.1 for runs on the Mac host.
+    """
+    host = PG_CONFIG["host"]
+    if host != "host.docker.internal":
+        return host
+    try:
+        socket.gethostbyname(host)
+        return host
+    except OSError:
+        fallback = os.getenv("POSTGRES_HOST_LOCAL", "127.0.0.1")
+        print(f"[db] {host} not available on this machine; using {fallback}")
+        return fallback
+
+
+def _pg_connect_kwargs() -> dict:
+    return {**PG_CONFIG, "host": postgres_host()}
+
+
 # === DB Setup ===
 def connect_db():
-    return psycopg2.connect(**PG_CONFIG)
+    return psycopg2.connect(**_pg_connect_kwargs())
 
 def create_tables_if_not_exists(conn):
     with conn.cursor() as cur:
@@ -231,7 +254,7 @@ def backup_database_pg_dump():
     cmd = [
         pg_dump,
         "-h",
-        PG_CONFIG["host"],
+        postgres_host(),
         "-p",
         str(PG_CONFIG["port"]),
         "-U",

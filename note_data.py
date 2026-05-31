@@ -228,6 +228,40 @@ notes_march = [
 
 ]
 
+notes_april = [
+    (1, "home", "test"),
+    (2, "home"),
+    (3, "remote"),
+    (4, "remote"),
+    (5, "remote"),
+    (6, "work"),
+    (7, "wroclaw"),
+    (8, "wroclaw"),
+    (9, "wroclaw"),
+    (10, "wroclaw"),
+
+    (11, "wroclaw"),
+    (12, "wroclaw"),
+    (13, "wroclaw"),
+    (14, "wroclaw"),
+    (15, "wroclaw"),
+    (16, "wroclaw"),
+    (17, "wroclaw"),
+    (18, "wroclaw"),
+    (19, "wroclaw"),
+    (20, "wroclaw"),
+    (21, "wroclaw"),
+    (22, "wroclaw"),
+    (23, "wroclaw"),
+    (24, "wroclaw"),
+    (25, "wroclaw"),
+    (26, "wroclaw"),
+    (27, "wroclaw"),
+    (28, "wroclaw"),
+    (29, "wroclaw"),
+    (30, "wroclaw"),
+
+]
 # Mapping for easy access by (year, month)
 notes_mapping = {
     (2025, 6): notes_june,
@@ -240,4 +274,5 @@ notes_mapping = {
     (2026, 1): notes_january,
     (2026, 2): notes_february,
     (2026, 3): notes_march,
+    (2026, 4): notes_april,
 }

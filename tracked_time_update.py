@@ -212,8 +212,51 @@ def main(range_start: datetime, range_end: datetime):
     print(f"[INFO] Upserted {len(entries)} row(s) into clickup_mkiel.")
 
 
-if __name__ == "__main__":
-    main(
-        datetime(2026, 1, 1, 0, 0, 0),
-        datetime(2026, 1, 7, 23, 59, 59),
+def _parse_cli_dates():
+    import argparse
+    from datetime import date, timedelta
+
+    parser = argparse.ArgumentParser(
+        description="Range sync: ClickUp tasks (by due date) → Postgres clickup_mkiel"
     )
+    parser.add_argument(
+        "--days-back",
+        type=int,
+        default=int(os.getenv("SYNC_DAYS_BACK", "2")),
+        help="Sync from (today - N days) through today (default: SYNC_DAYS_BACK or 2)",
+    )
+    parser.add_argument("--start", help="Start date YYYY-MM-DD (overrides --days-back)")
+    parser.add_argument("--end", help="End date YYYY-MM-DD (default: today)")
+    args = parser.parse_args()
+
+    if args.start:
+        start = datetime.strptime(args.start, "%Y-%m-%d").date()
+        end = (
+            datetime.strptime(args.end, "%Y-%m-%d").date()
+            if args.end
+            else date.today()
+        )
+    else:
+        end = date.today() if not args.end else datetime.strptime(args.end, "%Y-%m-%d").date()
+        start = end - timedelta(days=args.days_back)
+
+    if start > end:
+        parser.error("start date must be on or before end date")
+
+    return (
+        datetime.combine(start, datetime.min.time()),
+        datetime.combine(end, datetime.max.time()),
+    )
+
+
+if __name__ == "__main__":
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+    except ImportError:
+        pass
+
+    range_start, range_end = _parse_cli_dates()
+    print(f"[INFO] Range sync {range_start.date()} → {range_end.date()}")
+    main(range_start, range_end)

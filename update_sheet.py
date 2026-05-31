@@ -34,12 +34,29 @@ def post_csv(apps_url, csv_text):
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: python update_sheet.py /path/to/file.xlsx <Apps Script URL>")
-        sys.exit(1)
+    import os
 
-    path = sys.argv[1]
-    apps_url = sys.argv[2]
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+    except ImportError:
+        pass
+
+    if len(sys.argv) == 2:
+        path = sys.argv[1]
+        apps_url = os.getenv("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        if not apps_url:
+            print("Usage: python update_sheet.py /path/to/file.xlsx <Apps Script URL>")
+            print("Or set GOOGLE_APPS_SCRIPT_URL in .env")
+            sys.exit(1)
+    elif len(sys.argv) != 3:
+        print("Usage: python update_sheet.py /path/to/file.xlsx <Apps Script URL>")
+        print("Or:    python update_sheet.py /path/to/file.xlsx  (with GOOGLE_APPS_SCRIPT_URL in .env)")
+        sys.exit(1)
+    else:
+        path = sys.argv[1]
+        apps_url = sys.argv[2]
 
     csv_text = excel_first_sheet_to_csv_text(path)
     print(f"Converted '{path}' -> {len(csv_text.splitlines())} CSV lines. Posting to Apps Script...")

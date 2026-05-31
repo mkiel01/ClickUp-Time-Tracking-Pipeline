@@ -1,3 +1,12 @@
+import os
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 import streamlit as st
 import psycopg2
 import pandas as pd
@@ -5,7 +14,6 @@ import io
 import calendar
 from datetime import date, datetime, timedelta
 import warnings
-import os
 
 from styling import get_formats
 from tracked_time_update import main as tracked_time_update
@@ -20,7 +28,7 @@ from folder_config import PLANNED_HOURS, FOLDER_TAGS
 
 # Range of exel months to waht date will the exel show 
 fixed_start_date = "2025-06-01"
-fixed_end_date = "2026-03-31"
+fixed_end_date = "2026-06-30"
 
 
 warnings.filterwarnings("ignore")
@@ -34,8 +42,23 @@ PG_CONFIG = {
 }
 
 
+def _postgres_host():
+    host = PG_CONFIG["host"]
+    if host != "host.docker.internal":
+        return host
+    try:
+        import socket
+
+        socket.gethostbyname(host)
+        return host
+    except OSError:
+        fallback = os.getenv("POSTGRES_HOST_LOCAL", "127.0.0.1")
+        print(f"[db] {host} not available on this machine; using {fallback}")
+        return fallback
+
+
 def connect_db():
-    return psycopg2.connect(**PG_CONFIG)
+    return psycopg2.connect(**{**PG_CONFIG, "host": _postgres_host()})
 
 
 def check_connection_info():
@@ -778,4 +801,43 @@ else:
         use_container_width=True,
         hide_index=True,
     )
+
+
+def write_report_xlsx(output_path="habbit_tracker.xlsx", start_date=None, end_date=None):
+    """
+    Same workbook as Streamlit download (all folders, full report range).
+    Used by: python main.py export
+    """
+    start_date = start_date or os.getenv("REPORT_START_DATE", fixed_start_date)
+    end_date = end_date or os.getenv("REPORT_END_DATE", fixed_end_date)
+    df = load_data(start_date, end_date)
+
+    global WEEKLY_SUMMARIES
+    WEEKLY_SUMMARIES = {}
+    for yy, mm in months_between(start_date, end_date):
+        month_df = build_month_df(df, yy, mm)
+        month_start = f"{yy}-{mm:02d}-01"
+        month_end = f"{yy}-{mm:02d}-{calendar.monthrange(yy, mm)[1]}"
+        weekly = create_weekly_summary_df(month_df, month_start, month_end)
+        WEEKLY_SUMMARIES[(yy, mm)] = convert_summary_to_hhmm(weekly)
+
+    with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer:
+        create_complex_weekly_excel(writer, df)
+        create_all_folders_daily_summary_excel(writer, df, start_date, end_date)
+    return output_path
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "export":
+        out = "habbit_tracker.xlsx"
+        if "-o" in sys.argv:
+            out = sys.argv[sys.argv.index("-o") + 1]
+        path = write_report_xlsx(out)
+        print(f"Wrote {path}")
+    else:
+        print("CLI:  python main.py export [-o habbit_tracker.xlsx]")
+        print("UI:   streamlit run main.py")
+        sys.exit(1)
 

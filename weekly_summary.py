@@ -19,8 +19,23 @@ PG_CONFIG = {
 }
 
 
+def _postgres_host():
+    host = PG_CONFIG["host"]
+    if host != "host.docker.internal":
+        return host
+    try:
+        import socket
+
+        socket.gethostbyname(host)
+        return host
+    except OSError:
+        fallback = os.getenv("POSTGRES_HOST_LOCAL", "127.0.0.1")
+        print(f"[db] {host} not available on this machine; using {fallback}")
+        return fallback
+
+
 def connect_db():
-    return psycopg2.connect(**PG_CONFIG)
+    return psycopg2.connect(**{**PG_CONFIG, "host": _postgres_host()})
 
 
 def load_data(start_date, end_date):

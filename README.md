@@ -34,6 +34,38 @@ This project:
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on pushes and PRs to `main` / `master`: `compileall` on the Python modules plus `python -m unittest discover -s tests` (no API keys required).
 
+### Daily automation
+
+GitHub Actions workflow: `.github/workflows/daily-pipeline.yml` (`runs-on: self-hosted` on your Mac).
+
+| Step | Command |
+|------|---------|
+| 1 | `python tracked_time_update.py --days-back 2` |
+| 2 | `python main.py export -o habbit_tracker.xlsx` |
+| 3 | `python drive_upload.py habbit_tracker.xlsx` |
+
+Uses local `.env`, `.venv`, `token.pickle` — **no GitHub Secrets**. Set `GOOGLE_DRIVE_FILE_ID` in `.env` so the pipeline updates one Sheet; Streamlit upload still creates a new file each time.
+
+**Self-hosted runner (24/7):** install from GitHub → Settings → Actions → Runners into `actions-runner/` (gitignored), then:
+
+```bash
+cd actions-runner
+./svc.sh install
+./svc.sh start
+./svc.sh status   # expect Started; runner Idle on GitHub
+```
+
+**Run pipeline:** Actions → **Daily pipeline** → **Run workflow** (or push to `main`, or daily 06:00 UTC schedule). Mac must be on for scheduled runs.
+
+**Manual (same steps, no Actions):**
+
+```bash
+source .venv/bin/activate && set -a && source .env && set +a
+python tracked_time_update.py --days-back 2
+python main.py export -o habbit_tracker.xlsx
+python drive_upload.py habbit_tracker.xlsx
+```
+
 ## Personalized setup note
 
 This project is personalized for my own workflow. Some parts are intentionally hardcoded (for example folder/category names, preferred order in reports, planned hours, tags, and fixed report date ranges). Lists are not fully dynamic by default.
