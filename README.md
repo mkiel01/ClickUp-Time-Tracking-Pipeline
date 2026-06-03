@@ -46,16 +46,41 @@ GitHub Actions workflow: `.github/workflows/daily-pipeline.yml` (`runs-on: self-
 
 Uses local `.env`, `.venv`, `token.pickle` — **no GitHub Secrets**. Set `GOOGLE_DRIVE_FILE_ID` in `.env` so the pipeline updates one Sheet; Streamlit upload still creates a new file each time.
 
-**Self-hosted runner (24/7):** install from GitHub → Settings → Actions → Runners into `actions-runner/` (gitignored), then:
+**Runner as background service (no terminal open):** macOS **blocks background services on Desktop** (`Operation not permitted` in the log). `./run.sh` in Terminal works; LaunchAgent does not, unless you grant Full Disk Access to `/bin/bash`.
+
+**Fix:** move **only** `actions-runner/` off Desktop (project stays put):
 
 ```bash
-cd actions-runner
-./svc.sh install
-./svc.sh start
-./svc.sh status   # expect Started; runner Idle on GitHub
+# 1. stop broken service
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/github-actions-runner.plist 2>/dev/null
+cd /Users/mkiel/Desktop/click_up_api/actions-runner
+./svc.sh uninstall 2>/dev/null
+
+# 2. move runner (NOT the whole project)
+mkdir -p ~/actions-runners
+mv /Users/mkiel/Desktop/click_up_api/actions-runner ~/actions-runners/clickup
+
+# 3. test manually once
+cd ~/actions-runners/clickup && ./run.sh
+# Ctrl+C after you see "Listening for Jobs"
+
+# 4. install background service
+cd /Users/mkiel/Desktop/click_up_api
+cp macos/github-actions-runner.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/github-actions-runner.plist
 ```
 
-**Run pipeline:** Actions → **Daily pipeline** → **Run workflow** (or push to `main`, or daily 06:00 UTC schedule). Mac must be on for scheduled runs.
+Check: `tail -20 ~/Library/Logs/github-actions-runner.log` (no "Operation not permitted")  
+GitHub → Settings → Actions → Runners → **Idle**
+
+Stop/remove:
+
+```bash
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/github-actions-runner.plist
+rm ~/Library/LaunchAgents/github-actions-runner.plist
+```
+
+**Run pipeline:** Actions → **Daily pipeline** → **Run workflow** (or push to `main`, or daily 06:00 UTC). Mac must be on.
 
 **Manual (same steps, no Actions):**
 

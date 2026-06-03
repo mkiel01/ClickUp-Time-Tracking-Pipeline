@@ -1,15 +1,34 @@
+# Secrets (never commit)
 .env
-*.env
-.venv/
-venv/
-actions-runner/
+.env.local
 token.pickle
 oauth_client.json
 service_account.json
+
+# Env template stays in repo
+!.env.example
+
+# Python
+.venv/
+venv/
 __pycache__/
 *.pyc
+
+# GitHub Actions runner (local install)
+actions-runner/
+
+# DB backups & dumps (local only)
 database_backup_csv/
 database_backup_pg/
+postgres backup*/
+*.dump
+
+# Generated Excel (local only)
+habbit_tracker.xlsx
+clickup_time_entries.xlsx
+
+# Local docs / Mac runner plist
 .github/todo.txt
 .github/DAILY_PIPELINE.md
-habbit_tracker.xlsx
+cursor_project_understanding*.md
+macos/

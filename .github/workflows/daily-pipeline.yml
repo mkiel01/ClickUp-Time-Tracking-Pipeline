@@ -11,7 +11,7 @@ on:
     - cron: "0 6 * * *" # 06:00 UTC daily
 
 env:
-  PROJECT_DIR: /Users/mkiel/Desktop/click_up_api
+  PROJECT_DIR: /Users/michalkielkowski/Desktop/click_up_api
 
 jobs:
   daily:
@@ -39,3 +39,5 @@ jobs:
         run: |
           set -a && source .env && set +a
           arch -arm64 .venv/bin/python drive_upload.py habbit_tracker.xlsx
+
+

@@ -4,8 +4,6 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google_auth import get_user_credentials
 
-DEFAULT_FOLDER_ID = "1We1WUYqriSpew672xGV-CBkFZK5CgIEB"
-
 
 def upload_excel_and_convert(
     excel_source,
@@ -68,8 +66,12 @@ if __name__ == "__main__":
         pass
 
     path = sys.argv[1] if len(sys.argv) > 1 else "habbit_tracker.xlsx"
-    folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID", DEFAULT_FOLDER_ID)
+    folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
     file_id = os.getenv("GOOGLE_DRIVE_FILE_ID")
+    if not file_id and not folder_id:
+        raise ValueError(
+            "Set GOOGLE_DRIVE_FOLDER_ID or GOOGLE_DRIVE_FILE_ID in .env"
+        )
     filename = os.path.basename(path)
 
     with open(path, "rb") as f:

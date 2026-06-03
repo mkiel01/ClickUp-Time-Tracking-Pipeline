@@ -780,10 +780,17 @@ else:
                     excel_bytes = output.getvalue()
                     filename = "habbit_tracker.xlsx"
 
+                folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
+                file_id = os.getenv("GOOGLE_DRIVE_FILE_ID")
+                if not file_id and not folder_id:
+                    raise ValueError(
+                        "Set GOOGLE_DRIVE_FOLDER_ID or GOOGLE_DRIVE_FILE_ID in .env"
+                    )
                 link = upload_excel_and_convert(
                     io.BytesIO(excel_bytes),
                     filename,
-                    "1We1WUYqriSpew672xGV-CBkFZK5CgIEB",
+                    folder_id=folder_id,
+                    file_id=file_id,
                 )
 
                 st.success("Uploaded and converted.")
