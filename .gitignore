@@ -4,6 +4,7 @@
 token.pickle
 oauth_client.json
 service_account.json
+habbittrackerapi-*.json
 
 # Env template stays in repo
 !.env.example
@@ -16,6 +17,11 @@ __pycache__/
 
 # GitHub Actions runner (local install)
 actions-runner/
+old_actions-runner/
+actions-runners.textClipping
+
+# Cursor / local IDE
+.cursor/
 
 # DB backups & dumps (local only)
 database_backup_csv/
@@ -32,3 +38,4 @@ clickup_time_entries.xlsx
 .github/DAILY_PIPELINE.md
 cursor_project_understanding*.md
 macos/
+*.textClipping

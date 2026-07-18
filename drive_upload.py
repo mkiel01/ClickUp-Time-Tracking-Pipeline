@@ -2,7 +2,7 @@ import io
 import os
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
-from google_auth import get_user_credentials
+from google_auth import get_credentials
 
 
 def upload_excel_and_convert(
@@ -16,8 +16,9 @@ def upload_excel_and_convert(
 
     If file_id is set, replace that existing Sheet (same URL every run).
     Otherwise create a new Sheet in folder_id.
+    Auth: service_account.json if present, else user OAuth (token.pickle).
     """
-    creds = get_user_credentials()
+    creds = get_credentials()
     drive = build("drive", "v3", credentials=creds)
 
     if hasattr(excel_source, "read"):

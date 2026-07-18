@@ -26,9 +26,9 @@ from folder_config import PLANNED_HOURS, FOLDER_TAGS
 #     st.session_state["oauth_token_deleted"] = True
 
 
-# Range of exel months to waht date will the exel show 
+# Range of exel months to waht date will the exel show
 fixed_start_date = "2025-06-01"
-fixed_end_date = "2026-06-30"
+fixed_end_date = "2026-07-31"
 
 
 warnings.filterwarnings("ignore")

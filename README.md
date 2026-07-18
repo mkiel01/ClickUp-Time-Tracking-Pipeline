@@ -44,52 +44,131 @@ GitHub Actions workflow: `.github/workflows/daily-pipeline.yml` (`runs-on: self-
 | 2 | `python main.py export -o habbit_tracker.xlsx` |
 | 3 | `python drive_upload.py habbit_tracker.xlsx` |
 
-Uses local `.env`, `.venv`, `token.pickle` — **no GitHub Secrets**. Set `GOOGLE_DRIVE_FILE_ID` in `.env` so the pipeline updates one Sheet; Streamlit upload still creates a new file each time.
+Uses local `.env`, `.venv`, **`service_account.json`** (preferred) or `token.pickle` — **no GitHub Secrets**. Set `GOOGLE_DRIVE_FILE_ID` in `.env` so the pipeline updates one Sheet; Streamlit upload still creates a new file each time unless `file_id` is passed.
 
-**Runner as background service (no terminal open):** macOS **blocks background services on Desktop** (`Operation not permitted` in the log). `./run.sh` in Terminal works; LaunchAgent does not, unless you grant Full Disk Access to `/bin/bash`.
+**Paths on this Mac:**
 
-**Fix:** move **only** `actions-runner/` off Desktop (project stays put):
+| What | Path |
+|------|------|
+| Project (workflow runs here) | `~/Desktop/click_up_api` |
+| Runner (install here — **not** inside the project, **not** on Desktop) | `~/actions-runners/clickup` |
+| Service logs | `~/Library/Logs/actions.runner.mkiel01-ClickUp-Time-Tracking-Pipeline.Michals-MacBook-Pro/` |
 
-```bash
-# 1. stop broken service
-launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/github-actions-runner.plist 2>/dev/null
-cd /Users/mkiel/Desktop/click_up_api/actions-runner
-./svc.sh uninstall 2>/dev/null
+**Runner as background service:** `./svc.sh install` + `./svc.sh start` — **not** `./run.sh`. macOS blocks LaunchAgents from **Desktop** (`Operation not permitted` in `stderr.log`). The project stays on Desktop; the runner lives in `~/actions-runners/clickup`.
 
-# 2. move runner (NOT the whole project)
-mkdir -p ~/actions-runners
-mv /Users/mkiel/Desktop/click_up_api/actions-runner ~/actions-runners/clickup
+#### Clean install (self-hosted runner)
 
-# 3. test manually once
-cd ~/actions-runners/clickup && ./run.sh
-# Ctrl+C after you see "Listening for Jobs"
+**1 — GitHub (browser)**
 
-# 4. install background service
-cd /Users/mkiel/Desktop/click_up_api
-cp macos/github-actions-runner.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/github-actions-runner.plist
-```
+- **Settings → Actions → Runners**
+- Remove any old **Offline** runner (⋯ → Remove)
+- **New self-hosted runner** → **macOS + ARM64**
+- Keep the page open — you need the **Download** and **Configure** commands (token expires in ~1 hour)
 
-Check: `tail -20 ~/Library/Logs/github-actions-runner.log` (no "Operation not permitted")  
-GitHub → Settings → Actions → Runners → **Idle**
-
-Stop/remove:
+**2 — Mac: remove old runner completely**
 
 ```bash
-launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/github-actions-runner.plist
-rm ~/Library/LaunchAgents/github-actions-runner.plist
+# stop service (ignore errors if already gone)
+cd ~/Desktop/click_up_api/actions-runner/clickup 2>/dev/null && ./svc.sh stop && ./svc.sh uninstall
+cd ~/actions-runners/clickup 2>/dev/null && ./svc.sh stop && ./svc.sh uninstall
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/actions.runner.mkiel01-ClickUp-Time-Tracking-Pipeline.Michals-MacBook-Pro.plist 2>/dev/null
+rm -f ~/Library/LaunchAgents/actions.runner.mkiel01-ClickUp-Time-Tracking-Pipeline.Michals-MacBook-Pro.plist
+
+# delete old installs
+rm -rf ~/Desktop/click_up_api/actions-runner
+rm -rf ~/actions-runners/clickup
 ```
+
+**3 — Mac: fresh download** (paste **Download** block from GitHub into `~/actions-runners/clickup`)
+
+```bash
+mkdir -p ~/actions-runners/clickup
+cd ~/actions-runners/clickup
+# curl + tar from GitHub page (must be osx-arm64, not x64)
+```
+
+**4 — Mac: register + start service** (paste **Configure** line from GitHub)
+
+```bash
+cd ~/actions-runners/clickup
+./config.sh --url https://github.com/mkiel01/ClickUp-Time-Tracking-Pipeline --token YOUR_TOKEN_FROM_GITHUB
+# Enter for every prompt
+./svc.sh install
+./svc.sh start
+./svc.sh status
+```
+
+**5 — Verify**
+
+```bash
+tail -10 ~/Library/Logs/actions.runner.mkiel01-ClickUp-Time-Tracking-Pipeline.Michals-MacBook-Pro/stderr.log
+tail -10 ~/Library/Logs/actions.runner.mkiel01-ClickUp-Time-Tracking-Pipeline.Michals-MacBook-Pro/stdout.log
+```
+
+- `stderr.log`: no `Operation not permitted`
+- `stdout.log`: `Listening for Jobs`
+- GitHub → Runners → **Idle**
 
 **Run pipeline:** Actions → **Daily pipeline** → **Run workflow** (or push to `main`, or daily 06:00 UTC). Mac must be on.
+
+Trigger from terminal (after `brew install gh && gh auth login`):
+
+```bash
+cd ~/Desktop/click_up_api
+gh workflow run "Daily pipeline"
+gh run watch
+```
 
 **Manual (same steps, no Actions):**
 
 ```bash
-source .venv/bin/activate && set -a && source .env && set +a
-python tracked_time_update.py --days-back 2
-python main.py export -o habbit_tracker.xlsx
-python drive_upload.py habbit_tracker.xlsx
+cd ~/Desktop/click_up_api
+set -a && source .env && set +a
+.venv/bin/python tracked_time_update.py --days-back 2
+.venv/bin/python main.py export -o habbit_tracker.xlsx
+.venv/bin/python drive_upload.py habbit_tracker.xlsx
 ```
+
+Use **`.venv/bin/python`** — this venv has no `python` shim on PATH.
+
+#### Lessons learned (Jun 2026 — don’t repeat)
+
+**Self-hosted runner**
+
+| Mistake | What actually works |
+|--------|----------------------|
+| Runner inside `click_up_api/actions-runner/` on **Desktop** | Runner at **`~/actions-runners/clickup`** only |
+| `./run.sh` for daily automation | **`./svc.sh install`** + **`./svc.sh start`** (background) |
+| `./run.sh` to “test” then wonder why svc fails | `./run.sh` in Terminal **can** work on Desktop; **`svc.sh` cannot** — different macOS rules |
+| GitHub page **x64** on Apple Silicon | **ARM64** download |
+| `config.sh remove` when runner vanished from GitHub | Delete local files: `rm -f .runner .credentials .credentials_rsaparams` + new token |
+| Old `macos/github-actions-runner.plist` | **Ignore** — obsolete; `svc.sh install` creates its own LaunchAgent plist |
+| `stderr.log` still shows Desktop errors after fix | Old lines stay in the file — read **latest** `stdout.log` (`Listening for Jobs`) |
+
+**Verify runner:** GitHub → Runners → **Idle**; `stdout.log` ends with `Listening for Jobs`; no new `Operation not permitted` in `stderr.log`.
+
+**Google Drive (step 3 — `drive_upload.py`)**
+
+| Mistake | What actually works |
+|--------|----------------------|
+| User OAuth (`token.pickle`) for **scheduled** pipeline | **`service_account.json`** — no browser, no expiry |
+| Not sharing the Sheet with the SA email | Share Sheet with SA email as **Editor** |
+| **Web application** OAuth client (Streamlit fallback) | **Desktop app** → `oauth_client.json` with `"installed"` |
+| `python` after `source .venv/bin/activate` | **`.venv/bin/python`** |
+| Committing the SA JSON | Already gitignored — never commit keys |
+
+**Daily pipeline auth:** put `service_account.json` in the project root (from GCP → service account → Keys → JSON). Share the Sheet with that SA’s email.
+
+**Postgres (pipeline step 1)** — on Mac host, not in Docker for daily pipeline:
+
+```bash
+brew services start postgresql@17
+pg_isready -h 127.0.0.1 -p 5432
+# .env: POSTGRES_HOST=127.0.0.1
+```
+
+**What “working end-to-end” looks like (verified Jun 2026):** self-hosted runner **Idle** at `~/actions-runners/clickup` → `gh workflow run "Daily pipeline"` → all three steps green including Google Sheet upload.
+
 
 ## Personalized setup note
 
@@ -97,9 +176,35 @@ This project is personalized for my own workflow. Some parts are intentionally h
 
 If you want to use it for your own personal workflow, start with **`folder_config.py`** and **`main.py`** (date ranges, folder order in Excel), plus **`styling.py`** for Excel colors.
 
-### Google Drive upload (OAuth)
+### Google Drive upload
 
-`google_auth.py` opens a **local browser** to build `token.pickle`. That flow usually fails inside Docker (redirect goes to your Mac’s `localhost`, not the container). Easiest path: run the OAuth step **once on the host** (venv + `python -c "from google_auth import get_user_credentials; get_user_credentials()"`), then ensure `token.pickle` and `oauth_client.json` are available to the app (mount a volume or copy into the image).
+`google_auth.py` prefers **`service_account.json`** (daily pipeline / headless). If missing, falls back to Desktop user OAuth + `token.pickle` (Streamlit).
+
+**Files (project root, gitignored):**
+
+| File | Role |
+|------|------|
+| `service_account.json` | **Preferred** — GCP service account key (pipeline) |
+| `oauth_client.json` | Desktop OAuth client (optional fallback) |
+| `token.pickle` | User OAuth token (optional fallback) |
+
+**Service account setup:**
+
+1. GCP → Service accounts → create → Keys → JSON → save as `service_account.json`
+2. Enable [Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com?project=habbittrackerapi)
+3. Share the Google Sheet with the SA email as **Editor**
+4. Set **`GOOGLE_DRIVE_FILE_ID`** in `.env`
+
+**Test upload (no browser):**
+
+```bash
+cd ~/Desktop/click_up_api
+set -a && source .env && set +a
+.venv/bin/python drive_upload.py habbit_tracker.xlsx
+```
+
+User OAuth fallback still works if `service_account.json` is absent (browser login). Docker: mount `service_account.json` (or generate `token.pickle` on the host).
+
 
 ### GitHub “Traffic” / clones
 
