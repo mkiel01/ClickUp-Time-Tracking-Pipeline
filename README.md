@@ -109,7 +109,7 @@ tail -10 ~/Library/Logs/actions.runner.mkiel01-ClickUp-Time-Tracking-Pipeline.Mi
 - `stdout.log`: `Listening for Jobs`
 - GitHub → Runners → **Idle**
 
-**Run pipeline:** Actions → **Daily pipeline** → **Run workflow** (or push to `main`, or daily 06:00 UTC). Mac must be on.
+**Run pipeline:** Actions → **Daily pipeline** → **Run workflow** (or push to `main`, or daily **18:00 Warsaw** / `0 16 * * *` UTC in summer). Mac must be awake.
 
 Trigger from terminal (after `brew install gh && gh auth login`):
 
