@@ -28,7 +28,7 @@ from folder_config import PLANNED_HOURS, FOLDER_TAGS
 
 # Range of exel months to waht date will the exel show
 fixed_start_date = "2025-06-01"
-fixed_end_date = "2026-07-31"
+fixed_end_date = "2026-09-30"
 
 
 warnings.filterwarnings("ignore")
